@@ -7,6 +7,7 @@ import com.willfp.eco.core.proxy.ProxyConstants
 import com.willfp.eco.util.StringUtils
 import com.willfp.ecoenchants.enchant.EcoEnchants
 import com.willfp.ecoenchants.enchant.wrap
+import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Material
 import org.bukkit.Tag
@@ -71,13 +72,18 @@ class AnvilSupport(
 
         antiRepeat.add(player.uniqueId)
 
+        val resultClone:ItemStack? = event.result?.clone()
+        val item0Clone:ItemStack? = event.inventory.getItem(0)?.clone()
+        val item2Clone:ItemStack? = event.inventory.getItem(2)?.clone()
+
+
         this.plugin.scheduler.run {
             antiRepeat.remove(player.uniqueId)
 
             val left = event.inventory.getItem(0)?.clone()
             val old = left?.clone()
             val right = event.inventory.getItem(1)?.clone()
-
+            val item2LateClone:ItemStack? = event.inventory.getItem(2)?.clone()
             event.result = null
             event.inventory.setItem(2, null)
 
@@ -87,6 +93,17 @@ class AnvilSupport(
                 event.inventory.renameText ?: "",
                 player
             )
+            if (result == FAIL) {
+                event.result = resultClone
+                if(item2LateClone == null){
+                    event.inventory.setItem(2,item2LateClone)
+                }else{
+                    event.inventory.setItem(2,item2Clone)
+                }
+
+                return@run
+            }
+
 
             val price = result.xp ?: 0
             val outItem = result.result ?: ItemStack(Material.AIR)
@@ -264,8 +281,7 @@ class AnvilSupport(
 
         val enchantLevelDiff = abs(leftEnchants.values.sum() - outEnchants.values.sum())
         val xpCost =
-            plugin.configYml.getDouble("anvil.cost-exponent").pow(enchantLevelDiff) * enchantLevelDiff + unitRepairCost
-
+            enchantLevelDiff.toDouble().pow(plugin.configYml.getDouble("anvil.cost-exponent")) + unitRepairCost
         return AnvilResult(left, xpCost.roundToInt())
     }
 }
